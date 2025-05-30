@@ -99,17 +99,34 @@ LinearFluidProperties::c_from_v_e(Real v, Real e, Real & c, Real & dc_dv, Real &
 }
 
 Real
-LinearFluidProperties::cp_from_v_e(Real, Real) const
+LinearFluidProperties::cp_from_p_T(Real p, Real T) const
 {
-  return _cv;
+  Real rho, drho_dp, drho_dT;
+  rho_from_p_T(p, T, rho, drho_dp, drho_dT);
+  // Wikipedia notation for thermal expansion / compressibility coefficients
+  Real alpha = -drho_dT / rho;
+  Real beta = drho_dp / rho;
+  return _cv + MathUtils::pow(alpha, 2) * T / rho / beta;
+}
+
+Real
+LinearFluidProperties::cp_from_v_e(Real v, Real e) const
+{
+  Real p = p_from_v_e(v, e);
+  Real T = T_from_v_e(v, e);
+  return cp_from_p_T(p,T);
 }
 
 void
 LinearFluidProperties::cp_from_v_e(Real v, Real e, Real & cp, Real & dcp_dv, Real & dcp_de) const
 {
   cp = cp_from_v_e(v, e);
-  dcp_de = 0;
-  dcp_dv = 0;
+  // Using finite difference to get around difficulty of implementation
+  Real eps = 1e-10;
+  Real cp_pert = cp_from_v_e(v * (1 + eps), e);
+  dcp_dv = (cp_pert - cp) / eps / v;
+  cp_pert = cp_from_v_e(v, e * (1 + eps));
+  dcp_de = (cp_pert - cp) / eps / e;
 }
 
 Real
@@ -132,10 +149,26 @@ LinearFluidProperties::mu_from_v_e(Real, Real) const
   return _mu;
 }
 
+void
+LinearFluidProperties::mu_from_v_e(Real v, Real e, Real & mu, Real & dmu_dv, Real & dmu_de) const
+{
+  mu = mu_from_v_e(v, e);
+  dmu_de = 0;
+  dmu_dv = 0;
+}
+
 Real
 LinearFluidProperties::k_from_v_e(Real, Real) const
 {
   return _k;
+}
+
+void
+LinearFluidProperties::k_from_v_e(Real v, Real e, Real & k, Real & dk_dv, Real & dk_de) const
+{
+  k = k_from_v_e(v, e);
+  dk_de = 0;
+  dk_dv = 0;
 }
 
 Real
