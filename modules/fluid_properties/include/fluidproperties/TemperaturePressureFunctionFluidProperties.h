@@ -39,6 +39,15 @@ public:
    * @return temperature (K)
    */
   virtual Real T_from_v_e(Real v, Real e) const override;
+
+  /**
+   * Temperature and its derivatives from specific volume
+   * and specific internal energy
+   *
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
+   * @return temperature (K)
+   */
   virtual void T_from_v_e(Real v, Real e, Real & T,
                           Real & dT_dv, Real & dT_de) const override;
 
@@ -65,7 +74,9 @@ public:
    *
    * @param[in] v   specific volume (m$^3$/kg)
    * @param[in] e   specific internal energy (J/kg)
-   * @return pressure (Pa)
+   * @param[out] T     Temperature (K)
+   * @param[out] dT_dv derivative of temperature w.r.t. specific volume
+   * @param[out] dT_de derivative of temperature w.r.t. specific energy
    */
   virtual Real p_from_v_e(Real v, Real e) const override;
   virtual void p_from_v_e(Real p, Real e, Real & T,
@@ -79,6 +90,17 @@ public:
    * @return c speed of sound (m/s)
    */
   virtual Real c_from_v_e(Real v, Real e) const override;
+
+  /**
+   * speed of sound and derivatives from specific volume and
+   * specific internal energy
+   *
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
+   * @param[out] c     speed of sound (m/s)
+   * @param[out] dc_dv derivative of speed of sound w.r.t. specific volume
+   * @param[out] dc_de derivative of speed of sound w.r.t. specific energy
+   */
   virtual void c_from_v_e(Real v, Real e, Real & c,
                           Real & dc_dv, Real & dc_de) const override;
 
@@ -110,10 +132,10 @@ public:
    */
   virtual Real cv_from_v_e(Real v, Real e) const override;
   /**
-   * Isochoric specific heat capacity and its derivatives from pressure and temperature
+   * Isochoric specific heat capacity and its derivatives from specific volume and energy 
    *
-   * @param[in] p       pressure (Pa)
-   * @param[in] T       temperature (K)
+   * @param[in] v       specific volume
+   * @param[in] e       specific energy
    * @param[out] cv     isochoric specific heat (J/kg/K)
    * @param[out] dcv_dv derivative of isochoric specific heat w.r.t. specific volume
    * @param[out] dcv_de derivative of isochoric specific heat w.r.t. specific energy
@@ -128,6 +150,16 @@ public:
    * @return dynamic viscosity (Pa.s)
    */
   virtual Real mu_from_v_e(Real v, Real e) const override;
+
+  /**
+   * Dynamic viscosity and its derivatives from specific volume and speciic internal energy 
+   *
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
+   * @param[out] mu     dynamic viscosity (Pa.s)
+   * @param[out] dmu_dv derivative of dynamic viscosity w.r.t. specific volume
+   * @param[out] dmu_de derivative of dynamic viscosity w.r.t. specific energy
+   */
   virtual void mu_from_v_e(Real v, Real e, Real & mu,
                           Real & dmu_dv, Real & dmu_de) const override;
 
@@ -139,6 +171,15 @@ public:
    * @return thermal conductivity (W/m.K)
    */
   virtual Real k_from_v_e(Real v, Real e) const override;
+  /**
+   * Thermal conductivity and its derivatives from specific volume and speciic internal energy
+   *
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
+   * @param[out] k     thermal conductivity (W/m.K)
+   * @param[out] dk_dv derivative of thermal conductivity w.r.t. specific volume
+   * @param[out] dk_de derivative of thermal conductivity w.r.t. specific energy
+   */
   virtual void k_from_v_e(Real v, Real e, Real & k,
                           Real & dk_dv, Real & dk_de) const override;
 
@@ -209,11 +250,20 @@ public:
   /**
    * Specific enthalpy from specific volume and energy
    *
-   * @param[in] p   pressure (Pa)
-   * @param[in] T   temperature (K)
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
    * @return specific enthalpy (J/kg)
    */
   virtual Real h_from_v_e(Real v, Real e) const override;
+  /**
+   * Specific enthalpy and its derivatives from specific volume and energy
+   *
+   * @param[in] v   specific volume (m$^3$/kg)
+   * @param[in] e   specific internal energy (J/kg)
+   * @param[out] h       specific enthalpy (J/kg)
+   * @param[out] dh_dv   derivative of specific enthalpy w.r.t. specific volume
+   * @param[out] dh_de   derivative of specific enthalpy w.r.t. specific energy
+   */
   virtual void h_from_v_e(Real v, Real e, Real & h,
                           Real & dh_dv, Real & dh_de) const override;
 
@@ -245,6 +295,15 @@ public:
    * @param[out] e       specific internal energy (J/kg)
    */
   virtual Real e_from_p_rho(Real p, Real rho) const override;
+  /**
+   * Specific internal energy and its derivatives from pressure and density
+   *
+   * @param[in] p        pressure (Pa)
+   * @param[in] rho      density (kg/m$^3$)
+   * @param[out] e       specific internal energy (J/kg)
+   * @param[out] de_dp   derivative of specific internal energy w.r.t. pressure
+   * @param[out] de_drho   derivative of specific internal energy w.r.t. density 
+   */
   virtual void e_from_p_rho(Real p, Real rho, Real & e,
                             Real & de_dp, Real & de_drho) const override;
 
@@ -255,9 +314,18 @@ public:
    * @param[in] h        specific enthalpy
    * @param[out] e       specific internal energy (J/kg)
    */
-  virtual Real e_from_v_h(Real v, Real e) const override;
+  virtual Real e_from_v_h(Real v, Real h) const override;
+  /**
+   * Specific internal energy and its derivatives from pressure and density
+   *
+   * @param[in] v        specific volume (m^s/kg)
+   * @param[in] h        specific enthalpy
+   * @param[out] e       specific internal energy (J/kg)
+   * @param[out] de_dv   derivative of specific internal energy w.r.t. specific volume
+   * @param[out] de_dh   derivative of specific internal energy w.r.t. specific entropy 
+   */
   virtual void e_from_v_h(Real v, Real h, Real & e,
-                            Real & de_dv, Real & de_dh) const override;
+                          Real & de_dv, Real & de_dh) const override;
 
   /**
    * Thermal expansion coefficient from pressure and temperature

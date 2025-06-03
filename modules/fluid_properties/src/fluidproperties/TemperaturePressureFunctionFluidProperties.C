@@ -61,12 +61,6 @@ TemperaturePressureFunctionFluidProperties::initialSetup()
   _mu_function = &getFunction("mu");
   _cp_function = isParamValid("cp") ? &getFunction("cp") : nullptr;
 
-  const_cast<Function *>(_k_function)->initialSetup();
-  const_cast<Function *>(_rho_function)->initialSetup();
-  const_cast<Function *>(_mu_function)->initialSetup();
-  if (_cp_function)
-    const_cast<Function *>(_cp_function)->initialSetup();
-
   _initialized = true;
 }
 
@@ -100,9 +94,7 @@ TemperaturePressureFunctionFluidProperties::T_from_v_e(Real v, Real e, Real & T,
                                                        Real & dT_dv, Real & dT_de) const
 {
   T = T_from_v_e(v,e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real T_1v = T_from_v_e(v * (1 + eps), e);
   Real T_1e = T_from_v_e(v, e * (1 + eps));
@@ -246,7 +238,8 @@ TemperaturePressureFunctionFluidProperties::cv_from_v_e(
 Real
 TemperaturePressureFunctionFluidProperties::p_from_v_e(Real v, Real e) const
 {
-  if (_cv_is_constant) {
+  if (_cv_is_constant)
+  {
     const Real T = T_from_v_e(v, e);
     // note that p and T inversion in the definition of lambda
     auto lambda = [&](Real T, Real current_p, Real & new_rho, Real & drho_dT, Real & drho_dp)
@@ -287,9 +280,7 @@ TemperaturePressureFunctionFluidProperties::p_from_v_e(
 {
   // get p from v, e
   p = p_from_v_e(v, e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real p_1v = p_from_v_e(v * (1 + eps), e);
   Real p_1e = p_from_v_e(v, e * (1 + eps));
@@ -302,28 +293,45 @@ Real
 TemperaturePressureFunctionFluidProperties::c_from_v_e(
     Real v, Real e) const
 {
-  const Real T = T_from_v_e(v, e);
-  // note that p and T inversion in the definition of lambda
-  auto lambda = [&](Real T, Real current_p, Real & new_rho, Real & drho_dT, Real & drho_dp)
-  { rho_from_p_T(current_p, T, new_rho, drho_dp, drho_dT); };
-  std::pair<Real, Real> p_drhodp;
-  p_drhodp = FluidPropertiesUtils::NewtonSolve(
-               T, 1. / v, _p_initial_guess, _tolerance, lambda, name() + "::p_from_v_e");
-  // check for nans
-  if (std::isnan(p_drhodp.first))
-    mooseError("Conversion from specific volume (v = ",
-               v,
-               ") and specific energy (e = ",
-               e,
-               ") to speed of sound failed to converge.");
-  if (std::abs(p_drhodp.second) < 1e-10 && p_drhodp.second > 0.0) 
-    mooseError("Conversion from specific volume (v = ",
-               v,
-               ") and specific energy (e = ",
-               e,
-               ") to got zero or negative derivative.");
+  Real c;
+  // NOTE: could call p_T_from_v_e here
+  // then call rho_from_p_T to get derivs
+  if (_cv_is_constant) {
+    
+    const Real T = T_from_v_e(v, e);
+    // note that p and T inversion in the definition of lambda
+    auto lambda = [&](Real T, Real current_p, Real & new_rho, Real & drho_dT, Real & drho_dp)
+    { rho_from_p_T(current_p, T, new_rho, drho_dp, drho_dT); };
+    std::pair<Real, Real> p_drhodp;
+    p_drhodp = FluidPropertiesUtils::NewtonSolve(
+        T, 1. / v, _p_initial_guess, _tolerance, lambda, name() + "::p_from_v_e");
+    // check for nans
+    if (std::isnan(p_drhodp.first))
+      mooseError("Conversion from specific volume (v = ",
+                 v,
+                 ") and specific energy (e = ",
+                 e,
+                 ") to speed of sound failed to converge.");
+    if (std::abs(p_drhodp.second) < 1e-12 && p_drhodp.second > 0.0)
+      mooseError("Conversion from specific volume (v = ",
+                 v,
+                 ") and specific energy (e = ",
+                 e,
+                 ") got zero or negative derivative.");
 
-  Real c = std::sqrt(1./p_drhodp.second);
+    c = std::sqrt(1. / p_drhodp.second);
+  } else
+  {
+    // if this is the case, T_from_v_e calls below function
+    const Real p0 = _p_initial_guess;
+    const Real T0 = _T_initial_guess;
+    Real p, T;
+    bool conversion_succeeded = true;
+    p_T_from_v_e(v, e, p0, T0, p, T, conversion_succeeded);
+    Real rho, drho_dp, drho_dT;
+    rho_from_p_T(p, T, rho, drho_dp, drho_dT);
+    c = std::sqrt(1. / drho_dp);
+  }
   return c;
 }
 
@@ -332,9 +340,7 @@ TemperaturePressureFunctionFluidProperties::c_from_v_e(
     Real v, Real e, Real & c, Real & dc_dv, Real & dc_de) const
 {
   c = c_from_v_e(v,e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real c_1v = c_from_v_e(v * (1 + eps), e);
   Real c_1e = c_from_v_e(v, e * (1 + eps));
@@ -370,9 +376,7 @@ TemperaturePressureFunctionFluidProperties::mu_from_v_e(Real v, Real e, Real & m
                                                        Real & dmu_dv, Real & dmu_de) const
 {
   mu = mu_from_v_e(v,e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real mu_1v = mu_from_v_e(v * (1 + eps), e);
   Real mu_1e = mu_from_v_e(v, e * (1 + eps));
@@ -408,9 +412,7 @@ TemperaturePressureFunctionFluidProperties::k_from_v_e(Real v, Real e, Real & k,
                                                        Real & dk_dv, Real & dk_de) const
 {
   k = k_from_v_e(v,e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real k_1v = k_from_v_e(v * (1 + eps), e);
   Real k_1e = k_from_v_e(v, e * (1 + eps));
@@ -503,9 +505,7 @@ TemperaturePressureFunctionFluidProperties::h_from_v_e(
 {
   // get p from v, e
   h = h_from_v_e(v, e);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real h_1v = h_from_v_e(v * (1 + eps), e);
   Real h_1e = h_from_v_e(v, e * (1 + eps));
@@ -546,25 +546,9 @@ TemperaturePressureFunctionFluidProperties::e_from_p_T(
   else
   {
     e = e_from_p_T(pressure, temperature);
-    Real cv, dcv_dp, dcv_dT;
-    int n_intervals = std::ceil(std::abs(temperature - _T_ref) / _integration_dT);
-    const auto h = (temperature - _T_ref) / n_intervals;
-    Real integral = 0;
-    // Centered step integration is second-order
-    for (const auto i : make_range(n_intervals))
-    {
-      cv_from_p_T(pressure, _T_ref + (i + 0.5) * h, cv, dcv_dp, dcv_dT);
-      integral += dcv_dp;
-    }
-    integral *= h;
-
+    // NOTE: could get de_dp from integral of dcv_dp over T
     Real ep = e_from_p_T(pressure * (1 + 1e-8), temperature);
     de_dp = (ep - e) / (pressure * 1e-8);
-    if (std::abs(integral - de_dp) > 1e-5)
-    {
-      std::cout << "de_dp = " << de_dp << " integral = " << integral << std::endl;
-      mooseError("Jacobian is wrong!!!");
-    }
     de_dT = cv_from_p_T(pressure, temperature);
   }
 }
@@ -589,9 +573,7 @@ TemperaturePressureFunctionFluidProperties::e_from_p_rho(Real p, Real rho, Real 
                                                          Real & de_dp, Real & de_drho) const
 {
   e = e_from_p_rho(p, rho);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real e_1p = e_from_p_rho(p * (1 + eps), rho);
   Real e_1rho = e_from_p_rho(p, rho * (1 + eps));
@@ -627,9 +609,7 @@ TemperaturePressureFunctionFluidProperties::e_from_v_h(Real v, Real h, Real & e,
                                                          Real & de_dv, Real & de_dh) const
 {
   e = e_from_v_h(v,h);
-  // BPM: Finite diffs for now
-  // We could get derivs from NewtonSolve
-  // or Jacobian from NewtonSolve2D
+  // Finite diffs for now
   Real eps = 1e-8;
   Real e_1v = e_from_v_h(v * (1 + eps), h);
   Real e_1h = e_from_v_h(v, h * (1 + eps));
