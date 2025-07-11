@@ -1,0 +1,11 @@
+[Tests]
+  design = 'TemperaturePressureFunctionFluidProperties.md'
+  [temp_dependent_props]
+    issues = 'TODO'
+    requirement = "The system shall be able to simulate fluids with temperature and pressure dependent density, specific heat, viscosity, and thermal conductivity"
+    type = CSVDiff
+    input = 'FlowThroughChannel_MoltSalt.i'
+    csvdiff = 'FlowThroughChannel_MoltSalt_out.csv'
+    detail = 'temperature dependent rho, cp, mu, k'
+  []
+[]
